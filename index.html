@@ -57,16 +57,16 @@
         let scene, camera, renderer, sphere, videoTexture;
 
         async function initCamera() {
-            const constraints = {
-                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-                audio: false
-            };
             try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                // Request a standard video stream setup first
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }, 
+                    audio: false 
+                });
                 video.srcObject = stream;
                 return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
             } catch (err) {
-                // Fallback constraint checklist loop rules for older hardware devices
+                // Fallback constraint checklist rules for legacy hardware or restricted web views
                 const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 video.srcObject = basicStream;
                 return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
@@ -95,11 +95,11 @@
         function drawLoop() {
             requestAnimationFrame(drawLoop);
             
-            // Map dimensions smoothly matching screen canvas layout window coordinates
+            // Render the full 360 panoramic video world directly to the main display canvas layer
             renderer.render(scene, camera);
             ctx.drawImage(renderer.domElement, 0, 0, canvas.width, canvas.height);
             
-            // Touch/mouse controls simulation math mapping to trace around looking vector movements
+            // Continuous calculation adjustments for real-time drag-and-swipe features
             if (isDragging && targetRotationX !== undefined) {
                 currentRotationX += (targetRotationX - currentRotationX) * 0.1;
                 currentRotationY += (targetRotationY - currentRotationY) * 0.1;
@@ -122,17 +122,23 @@
                 const deltaY = y - previousMousePosition.y;
                 targetRotationX += deltaX * 0.005;
                 targetRotationY += deltaY * 0.005;
-                targetRotationY = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetRotationY)); // Clamp look limits
+                targetRotationY = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetRotationY)); // Limit vertical head look limits
                 previousMousePosition = { x, y };
             };
             const stopDrag = () => { isDragging = false; };
 
+            // Mouse handling listeners
             window.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
             window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
             window.addEventListener('mouseup', stopDrag);
 
-            window.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX, e.touches[0].clientY));
-            window.addEventListener('touchmove', (e) => moveDrag(e.touches[0].clientX, e.touches[0].clientY));
+            // FIXED: Mobile touch interface mappings that safely read swipe coordinate nodes
+            window.addEventListener('touchstart', (e) => { 
+                if(e.touches && e.touches[0]) startDrag(e.touches[0].clientX, e.touches[0].clientY); 
+            });
+            window.addEventListener('touchmove', (e) => { 
+                if(e.touches && e.touches[0]) moveDrag(e.touches[0].clientX, e.touches[0].clientY); 
+            });
             window.addEventListener('touchend', stopDrag);
         }
 
@@ -157,11 +163,12 @@
             }
         });
 
+        // Device click permissions bypass flags for background looping video assets
         window.addEventListener('click', () => { bgVideo.play().catch(()=>{}); });
         window.addEventListener('touchstart', () => { bgVideo.play().catch(()=>{}); });
 
         startAR().catch(err => {
-            document.getElementById('status').innerHTML = "❌ Hardware Error<br>Camera block context dropped.";
+            document.getElementById('status').innerHTML = "❌ Hardware Error<br>Camera initialization block context dropped.";
             console.error(err);
         });
     </script>
