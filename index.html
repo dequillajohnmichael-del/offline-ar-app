@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Offline WebAR Video Background</title>
+    <title>Offline WebAR Background</title>
     <link rel="manifest" href="./manifest.json">
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #121212; font-family: sans-serif; color: white; user-select: none; }
@@ -12,71 +12,75 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
         #disclaimer { font-size: 0.8rem; color: #888; margin-top: 30px; max-width: 320px; line-height: 1.5; }
-        #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-        video { position: absolute; visibility: hidden; width: 1px; height: 1px; pointer-events: none; }
+        #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        #webcam { position: absolute; top: 20px; right: 20px; width: 120px; height: 160px; object-fit: cover; border-radius: 12px; border: 2px solid #00ffcc; transform: scaleX(-1); z-index: 5; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
     </style>
-    <!-- Stable Web Framework Dependencies -->
     <script src="https://cloudflare.com"></script>
-    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
 </head>
 <body>
 
     <div id="loading-screen">
         <div class="spinner"></div>
-        <div id="status">Syncing high-performance AR engines...<br>Please keep internet on for this initial scan.</div>
-        <div id="disclaimer">⚠️ For permanent offline background features, tap your browser menu and choose <b>"Open in Safari"</b> or <b>"Open in Chrome"</b> instead of staying inside the temporary QR scanner window.</div>
+        <div id="status">Syncing WebAR background mechanics...<br>Please wait.</div>
+        <div id="disclaimer">⚠️ For complete offline background features, open this page directly in Safari or Chrome instead of staying inside the temporary QR scanner window.</div>
     </div>
 
-    <!-- Background media asset containers mapping into live calculations -->
+    <!-- Active interactive layout maps -->
     <video id="webcam" autoplay playsinline muted></video>
-    <video id="bg-video" src="./background.mp4" autoplay loop muted playsinline crossorigin="anonymous"></video>
-    
+    <video id="bg-video" src="./background.mp4" autoplay loop muted playsinline crossorigin="anonymous" style="display:none;"></video>
     <canvas id="ar-canvas"></canvas>
 
     <script>
-        // --- 1. Service Worker Caching Registration Engine ---
+        // --- 1. Service Worker Offline PWA Hooks ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').then((reg) => {
                 if (reg.installing) {
                     reg.installing.addEventListener('statechange', (e) => {
                         if (e.target.state === 'installed') {
                             document.getElementById('status').innerHTML = "🎉 AR Engine Ready!<br>This application is now available 100% offline.";
-                            setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 2500);
+                            setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 2000);
                         }
                     });
                 } else {
-                    document.getElementById('status').innerText = "Launching offline environment...";
-                    setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 1200);
+                    document.getElementById('status').innerText = "Launching offline space...";
+                    setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 1000);
                 }
             });
         }
 
-        // --- 2. Advanced AR Matrix Compositing Architecture ---
+        // --- 2. Crash-Proof Browser WebAR Matrix Engine ---
         const video = document.getElementById('webcam');
         const bgVideo = document.getElementById('bg-video');
         const canvas = document.getElementById('ar-canvas');
         const ctx = canvas.getContext('2d');
         
-        let scene, camera, renderer, sphere, videoTexture, selfieSegmentation;
+        let scene, camera, renderer, sphere, videoTexture;
 
-        // FIXED: Universal camera sizing constraint that won't crash mobile devices or HD webcams
         async function initCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'user' }, 
-                audio: false 
-            });
-            video.srcObject = stream;
-            return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
+            const constraints = {
+                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: false
+            };
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
+            } catch (err) {
+                // Fallback constraint checklist loop rules for older hardware devices
+                const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = basicStream;
+                return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
+            }
         }
 
         function initThreeJS() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             
-            // Map your moving background.mp4 texture onto an inside-out 3D spatial wrapper
-            const geometry = new THREE.SphereGeometry(500, 32, 32);
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
             geometry.scale(-1, 1, 1); 
             
             videoTexture = new THREE.VideoTexture(bgVideo);
@@ -88,53 +92,64 @@
             bgVideo.play().catch(() => {});
         }
 
-        // AI segmentation frame data rendering processor loop
-        function onSegmentationResults(results) {
-            ctx.save();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function drawLoop() {
+            requestAnimationFrame(drawLoop);
             
-            // Render the live virtual 360 panoramic animation room behind the user space
+            // Map dimensions smoothly matching screen canvas layout window coordinates
             renderer.render(scene, camera);
             ctx.drawImage(renderer.domElement, 0, 0, canvas.width, canvas.height);
             
-            // Build mask overlay tracking coordinates around body outline boundaries
-            ctx.globalCompositeOperation = 'destination-in';
-            ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
-            
-            // Render mirrored webcam stream variables under the isolated frame cutout texture
-            ctx.globalCompositeOperation = 'destination-over';
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1); 
-            ctx.drawImage(results.image, 0, 0, -canvas.width, canvas.height);
-            
-            ctx.restore();
+            // Touch/mouse controls simulation math mapping to trace around looking vector movements
+            if (isDragging && targetRotationX !== undefined) {
+                currentRotationX += (targetRotationX - currentRotationX) * 0.1;
+                currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+                sphere.rotation.y = currentRotationX;
+                sphere.rotation.x = currentRotationY;
+            }
+        }
+
+        // --- 3. Interactive Touch Look-Around Mapping Controller ---
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let currentRotationX = 0, currentRotationY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+
+        function setupInteractions() {
+            const startDrag = (x, y) => { isDragging = true; previousMousePosition = { x, y }; };
+            const moveDrag = (x, y) => {
+                if (!isDragging) return;
+                const deltaX = x - previousMousePosition.x;
+                const deltaY = y - previousMousePosition.y;
+                targetRotationX += deltaX * 0.005;
+                targetRotationY += deltaY * 0.005;
+                targetRotationY = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetRotationY)); // Clamp look limits
+                previousMousePosition = { x, y };
+            };
+            const stopDrag = () => { isDragging = false; };
+
+            window.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+            window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+            window.addEventListener('mouseup', stopDrag);
+
+            window.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX, e.touches[0].clientY));
+            window.addEventListener('touchmove', (e) => moveDrag(e.touches[0].clientX, e.touches[0].clientY));
+            window.addEventListener('touchend', stopDrag);
         }
 
         async function startAR() {
             await initCamera();
             initThreeJS();
+            setupInteractions();
             
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            // Initialize the MediaPipe processing engine variables using locally cached data components
-            selfieSegmentation = new SelfieSegmentation({
-                locateFile: (file) => `https://jsdelivr.net{file}`
-            });
-
-            selfieSegmentation.setOptions({ modelSelection: 1 }); // 1 = Optimized Landscape target calculation rules for mobile
-            selfieSegmentation.onResults(onSegmentationResults);
-
-            async function processVideoFrame() {
-                if (!video.paused && !video.ended) {
-                    await selfieSegmentation.send({ image: video });
-                }
-                requestAnimationFrame(processVideoFrame);
-            }
-            processVideoFrame();
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            drawLoop();
         }
 
         window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
             if (camera && renderer) {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
@@ -142,12 +157,11 @@
             }
         });
 
-        // Autoplay safe fallback bypass hooks mapping user screen tap triggers
-        window.addEventListener('click', () => { if (bgVideo) bgVideo.play(); });
-        window.addEventListener('touchstart', () => { if (bgVideo) bgVideo.play(); });
+        window.addEventListener('click', () => { bgVideo.play().catch(()=>{}); });
+        window.addEventListener('touchstart', () => { bgVideo.play().catch(()=>{}); });
 
         startAR().catch(err => {
-            document.getElementById('status').innerHTML = "❌ Camera Error<br>Please reset browser permissions.";
+            document.getElementById('status').innerHTML = "❌ Hardware Error<br>Camera block context dropped.";
             console.error(err);
         });
     </script>
