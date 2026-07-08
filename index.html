@@ -12,9 +12,7 @@
             width: 100%; 
             height: 100%; 
             overflow: hidden; 
-            /* FORCED FIX: This automatically forces your uploaded image to stretch across the full screen */
-            background: url('./background.jpg') no-repeat center center fixed; 
-            background-size: cover; 
+            background-color: #0a192f;
             font-family: sans-serif; 
             color: white; 
             user-select: none; 
@@ -24,6 +22,19 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
         
+        /* The Absolute Visual Background Layer stretching full screen */
+        #bg-fallback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
         /* Live Camera Overlay Bubble */
         #webcam { position: absolute; top: 20px; right: 20px; width: 140px; height: 185px; object-fit: cover; border-radius: 16px; border: 3px solid #00ffcc; transform: scaleX(-1); z-index: 5; box-shadow: 0 8px 25px rgba(0,0,0,0.6); background: #121212; display: none; }
     </style>
@@ -35,6 +46,9 @@
         <div id="status">Syncing WebAR background mechanics...<br>Please wait.</div>
     </div>
     
+    <!-- The Multi-Format Background Container -->
+    <div id="bg-fallback"></div>
+
     <!-- Camera Overlay -->
     <video id="webcam" autoplay playsinline muted></video>
 
@@ -43,13 +57,44 @@
             navigator.serviceWorker.register('./sw.js').catch(err => console.log("SW bypass:", err));
         }
 
-        // Instant load bypass
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) loadingScreen.style.display = 'none';
         }, 1000);
 
         const video = document.getElementById('webcam');
+        const bgLayer = document.getElementById('bg-fallback');
+
+        // MULTI-FORMAT AUTO-TRY LOADER ENGINE
+        // This loops through all possible naming variants to force your image to show up
+        const imageFormats = [
+            './background.jpg',
+            './background.jpeg',
+            './background.png',
+            './background.JPG',
+            './background.JPEG'
+        ];
+
+        function tryLoadBackground(index) {
+            if (index >= imageFormats.length) {
+                console.log("All image formats exhausted.");
+                return;
+            }
+            
+            const img = new Image();
+            img.src = imageFormats[index];
+            
+            img.onload = function() {
+                // If it successfully loads, instantly apply it to the full screen background style
+                bgLayer.style.backgroundImage = `url('${imageFormats[index]}')`;
+                console.log("Successfully loaded background format: " + imageFormats[index]);
+            };
+            
+            img.onerror = function() {
+                // If it fails (404), skip it instantly and try the next extension type variant format
+                tryLoadBackground(index + 1);
+            };
+        }
 
         async function initCamera() {
             try {
@@ -61,7 +106,10 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', initCamera);
+        window.addEventListener('DOMContentLoaded', () => {
+            tryLoadBackground(0); // Launch the fail-safe format chain loop
+            initCamera();
+        });
     </script>
 </body>
 </html>
