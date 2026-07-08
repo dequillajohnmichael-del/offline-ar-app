@@ -1,9 +1,9 @@
-const CACHE_NAME = 'offline-ar-clean-v6';
+const CACHE_NAME = 'offline-ar-clean-v7';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './background.mp4'
+  './background.jpg'
 ];
 
 self.addEventListener('install', (event) => {
