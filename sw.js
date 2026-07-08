@@ -1,9 +1,8 @@
-const CACHE_NAME = 'offline-ar-clean-v7';
+const CACHE_NAME = 'offline-ar-clean-v8';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json',
-  './background.jpg'
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -19,5 +18,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Catch-all system: Dynamically save any image file format variant names matching your repository assets list
+  if (event.request.url.includes('background')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return fetch(event.request).then((response) => {
+          cache.put(event.request, response.clone());
+          return response;
+        }).catch(() => caches.match(event.request));
+      })
+    );
+    return;
+  }
   event.respondWith(caches.match(event.request).then((res) => res || fetch(event.request)));
 });
