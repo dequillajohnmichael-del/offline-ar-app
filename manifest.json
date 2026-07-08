@@ -1,0 +1,10 @@
+{
+  "short_name": "AR_Offline",
+  "name": "Offline AR Background Web App",
+  "icons": [],
+  "start_url": "./index.html",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "display": "standalone",
+  "orientation": "portrait"
+}
