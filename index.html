@@ -6,16 +6,19 @@
     <title>Offline WebAR Background</title>
     <link rel="manifest" href="./manifest.json">
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #121212; font-family: sans-serif; color: white; user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0a192f; font-family: sans-serif; color: white; user-select: none; }
         #loading-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18,18,18,0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; text-align: center; padding: 20px; box-sizing: border-box; }
         .spinner { border: 4px solid rgba(255,255,255,0.1); width: 50px; height: 50px; border-radius: 50%; border-left-color: #00ffcc; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
         #disclaimer { font-size: 0.8rem; color: #888; margin-top: 30px; max-width: 320px; line-height: 1.5; }
-        #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; pointer-events: none; }
-        #webcam { position: absolute; top: 20px; right: 20px; width: 120px; height: 160px; object-fit: cover; border-radius: 12px; border: 2px solid #00ffcc; transform: scaleX(-1); z-index: 5; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        
+        /* The Moving Video Background (Stretched across the entire screen layout) */
+        #bg-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        
+        /* Your Live Camera Feed Bubble Overlay */
+        #webcam { position: absolute; top: 20px; right: 20px; width: 140px; height: 185px; object-fit: cover; border-radius: 16px; border: 3px solid #00ffcc; transform: scaleX(-1); z-index: 5; box-shadow: 0 8px 25px rgba(0,0,0,0.6); background: #121212; }
     </style>
-    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
@@ -27,26 +30,23 @@
 
     <!-- Active interactive layout maps -->
     <video id="webcam" autoplay playsinline muted></video>
-    <video id="bg-video" src="./background.mp4" autoplay loop muted playsinline crossorigin="anonymous" style="display:none;"></video>
-    <canvas id="ar-canvas" style="display:none;"></canvas>
+    <video id="bg-video" src="./background.mp4" autoplay loop muted playsinline crossorigin="anonymous"></video>
 
     <script>
         // --- 1. Service Worker Caching Registration Engine ---
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').catch(err => console.log("SW registration bypassed for local dev:", err));
+            navigator.serviceWorker.register('./sw.js').catch(err => console.log("SW bypass:", err));
         }
 
-        // SPEED BYPASS FIXED: Forces the loading mask down after 1.5 seconds regardless of asset size
+        // SPEED BYPASS: Instantly drops the loading layer after 1 second
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) loadingScreen.style.display = 'none';
-        }, 1500);
+        }, 1000);
 
-        // --- 2. Crash-Proof Browser WebAR Matrix Engine ---
+        // --- 2. Pure Browser Video & Camera Management Engine ---
         const video = document.getElementById('webcam');
         const bgVideo = document.getElementById('bg-video');
-        
-        let scene, camera, renderer, sphere, videoTexture;
 
         async function initCamera() {
             try {
@@ -55,119 +55,26 @@
                     audio: false 
                 });
                 video.srcObject = stream;
-                return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
             } catch (err) {
-                const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                video.srcObject = basicStream;
-                return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
+                console.log("Webcam access restricted or missing. Running background only mode.");
+                video.style.display = 'none';
             }
         }
 
-        function initThreeJS() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a192f); // Deep blue fallback color space matrix
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            
-            // Force mount the direct renderer layout onto display hierarchy
-            document.body.appendChild(renderer.domElement);
-            renderer.domElement.style.position = "absolute";
-            renderer.domElement.style.top = "0";
-            renderer.domElement.style.left = "0";
-            renderer.domElement.style.zIndex = "0";
-
-            const geometry = new THREE.SphereGeometry(500, 60, 40);
-            geometry.scale(-1, 1, 1); 
-            
-            bgVideo.muted = true;
-            bgVideo.crossOrigin = "anonymous";
-            
-            videoTexture = new THREE.VideoTexture(bgVideo);
-            videoTexture.minFilter = THREE.LinearFilter;
-            videoTexture.magFilter = THREE.LinearFilter;
-            
-            const material = new THREE.MeshBasicMaterial({ map: videoTexture });
-            sphere = new THREE.Mesh(geometry, material);
-            scene.add(sphere);
-            
-            camera.position.set(0, 0, 0.1);
-            
-            const playVideo = () => { bgVideo.play().catch(e => console.log(e)); };
-            window.addEventListener('click', playVideo);
-            window.addEventListener('touchstart', playVideo);
-            bgVideo.play().catch(() => {});
-        }
-
-        function drawLoop() {
-            requestAnimationFrame(drawLoop);
-            renderer.render(scene, camera);
-            
-            if (isDragging && targetRotationX !== undefined) {
-                currentRotationX += (targetRotationX - currentRotationX) * 0.1;
-                currentRotationY += (targetRotationY - currentRotationY) * 0.1;
-                sphere.rotation.y = currentRotationX;
-                sphere.rotation.x = currentRotationY;
+        // Trigger autoplay permissions for video files on initial user interaction gestures
+        function unlockAutoplay() {
+            if (bgVideo) {
+                bgVideo.play().catch(e => console.log("Autoplay context waiting..."));
             }
         }
 
-        // --- 3. Interactive Touch Look-Around Mapping Controller ---
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        let currentRotationX = 0, currentRotationY = 0;
-        let targetRotationX = 0, targetRotationY = 0;
+        window.addEventListener('click', unlockAutoplay);
+        window.addEventListener('touchstart', unlockAutoplay);
 
-        function setupInteractions() {
-            const startDrag = (x, y) => { isDragging = true; previousMousePosition = { x, y }; };
-            const moveDrag = (x, y) => {
-                if (!isDragging) return;
-                const deltaX = x - previousMousePosition.x;
-                const deltaY = y - previousMousePosition.y;
-                targetRotationX += deltaX * 0.005;
-                targetRotationY += deltaY * 0.005;
-                targetRotationY = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetRotationY));
-                previousMousePosition = { x, y };
-            };
-            const stopDrag = () => { isDragging = false; };
-
-            window.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
-            window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
-            window.addEventListener('mouseup', stopDrag);
-
-            window.addEventListener('touchstart', (e) => { 
-                if(e.touches && e.touches.length > 0) startDrag(e.touches[0].clientX, e.touches[0].clientY); 
-            });
-            window.addEventListener('touchmove', (e) => { 
-                if(e.touches && e.touches.length > 0) moveDrag(e.touches[0].clientX, e.touches[0].clientY); 
-            });
-            window.addEventListener('touchend', stopDrag);
-        }
-
-        async function startAR() {
-            try {
-                await initCamera();
-            } catch(e) {
-                console.log("Webcam blocked or missing. Loading 360 viewer fallback mode.");
-                document.getElementById('webcam').style.display = 'none';
-            }
-            
-            initThreeJS();
-            setupInteractions();
-            drawLoop();
-        }
-
-        window.addEventListener('resize', () => {
-            if (camera && renderer) {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }
-        });
-
-        startAR().catch(err => {
-            console.error(err);
+        // Run setup instantly on window launch
+        window.addEventListener('DOMContentLoaded', () => {
+            initCamera();
+            unlockAutoplay();
         });
     </script>
 </body>
