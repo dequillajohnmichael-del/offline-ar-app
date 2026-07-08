@@ -12,7 +12,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
         #disclaimer { font-size: 0.8rem; color: #888; margin-top: 30px; max-width: 320px; line-height: 1.5; }
-        #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; pointer-events: none; }
         #webcam { position: absolute; top: 20px; right: 20px; width: 120px; height: 160px; object-fit: cover; border-radius: 12px; border: 2px solid #00ffcc; transform: scaleX(-1); z-index: 5; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
     </style>
     <script src="https://cloudflare.com"></script>
@@ -28,7 +28,7 @@
     <!-- Active interactive layout maps -->
     <video id="webcam" autoplay playsinline muted></video>
     <video id="bg-video" src="./background.mp4" autoplay loop muted playsinline crossorigin="anonymous" style="display:none;"></video>
-    <canvas id="ar-canvas"></canvas>
+    <canvas id="ar-canvas" style="display:none;"></canvas>
 
     <script>
         // --- 1. Service Worker Caching Registration Engine ---
@@ -45,8 +45,6 @@
         // --- 2. Crash-Proof Browser WebAR Matrix Engine ---
         const video = document.getElementById('webcam');
         const bgVideo = document.getElementById('bg-video');
-        const canvas = document.getElementById('ar-canvas');
-        const ctx = canvas.getContext('2d');
         
         let scene, camera, renderer, sphere, videoTexture;
 
@@ -67,28 +65,45 @@
 
         function initThreeJS() {
             scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a192f); // Deep blue fallback color space matrix
+
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
             
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             
+            // Force mount the direct renderer layout onto display hierarchy
+            document.body.appendChild(renderer.domElement);
+            renderer.domElement.style.position = "absolute";
+            renderer.domElement.style.top = "0";
+            renderer.domElement.style.left = "0";
+            renderer.domElement.style.zIndex = "0";
+
             const geometry = new THREE.SphereGeometry(500, 60, 40);
             geometry.scale(-1, 1, 1); 
             
+            bgVideo.muted = true;
+            bgVideo.crossOrigin = "anonymous";
+            
             videoTexture = new THREE.VideoTexture(bgVideo);
+            videoTexture.minFilter = THREE.LinearFilter;
+            videoTexture.magFilter = THREE.LinearFilter;
+            
             const material = new THREE.MeshBasicMaterial({ map: videoTexture });
             sphere = new THREE.Mesh(geometry, material);
             scene.add(sphere);
             
             camera.position.set(0, 0, 0.1);
+            
+            const playVideo = () => { bgVideo.play().catch(e => console.log(e)); };
+            window.addEventListener('click', playVideo);
+            window.addEventListener('touchstart', playVideo);
             bgVideo.play().catch(() => {});
         }
 
         function drawLoop() {
             requestAnimationFrame(drawLoop);
-            
             renderer.render(scene, camera);
-            ctx.drawImage(renderer.domElement, 0, 0, canvas.width, canvas.height);
             
             if (isDragging && targetRotationX !== undefined) {
                 currentRotationX += (targetRotationX - currentRotationX) * 0.1;
@@ -140,25 +155,16 @@
             
             initThreeJS();
             setupInteractions();
-            
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
             drawLoop();
         }
 
         window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
             if (camera && renderer) {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             }
         });
-
-        window.addEventListener('click', () => { bgVideo.play().catch(()=>{}); });
-        window.addEventListener('touchstart', () => { bgVideo.play().catch(()=>{}); });
 
         startAR().catch(err => {
             console.error(err);
