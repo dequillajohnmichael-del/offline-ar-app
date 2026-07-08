@@ -11,14 +11,12 @@
         .spinner { border: 4px solid rgba(255,255,255,0.1); width: 50px; height: 50px; border-radius: 50%; border-left-color: #00ffcc; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
-        #disclaimer { font-size: 0.8rem; color: #888; margin-top: 30px; max-width: 320px; line-height: 1.5; }
         
-        /* Direct screen layout drawing board canvas */
-        #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        /* The Visual Background Image Layer */
+        #bg-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
         
-        /* Live Camera Overlay Frame Bubble */
-        #webcam { position: absolute; top: 20px; right: 20px; width: 140px; height: 185px; object-fit: cover; border-radius: 16px; border: 3px solid #00ffcc; transform: scaleX(-1); z-index: 5; box-shadow: 0 8px 25px rgba(0,0,0,0.6); background: #121212; }
-        video { display: none; }
+        /* Live Camera Overlay Bubble */
+        #webcam { position: absolute; top: 20px; right: 20px; width: 140px; height: 185px; object-fit: cover; border-radius: 16px; border: 3px solid #00ffcc; transform: scaleX(-1); z-index: 5; box-shadow: 0 8px 25px rgba(0,0,0,0.6); background: #121212; display: none; }
     </style>
 </head>
 <body>
@@ -26,76 +24,38 @@
     <div id="loading-screen">
         <div class="spinner"></div>
         <div id="status">Syncing WebAR background mechanics...<br>Please wait.</div>
-        <div id="disclaimer">⚠️ For complete offline background features, open this page directly in Safari or Chrome instead of staying inside the temporary QR scanner window.</div>
     </div>
 
-    <!-- Core Asset Elements -->
+    <!-- The 360 Fallback Panoramic Background Image -->
+    <img id="bg-image" src="./background.jpg" alt="AR Background">
+    
+    <!-- Camera Overlay -->
     <video id="webcam" autoplay playsinline muted></video>
-    <video id="bg-video" src="./background.mp4" autoplay loop muted playsinline preload="auto" type="video/mp4" crossorigin="anonymous"></video>
-    <canvas id="ar-canvas"></canvas>
 
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(err => console.log("SW bypass:", err));
         }
 
+        // Instant load bypass
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) loadingScreen.style.display = 'none';
-        }, 1200);
+        }, 1000);
 
         const video = document.getElementById('webcam');
-        const bgVideo = document.getElementById('bg-video');
-        const canvas = document.getElementById('ar-canvas');
-        const ctx = canvas.getContext('2d');
 
         async function initCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-                video.style.display = "block"; // Turn on overlay bubble
+                video.style.display = "block"; 
                 video.srcObject = stream;
             } catch (err) {
                 console.log("Webcam bypassed.");
             }
         }
 
-        // Direct-draw paint engine loop that forces frames onto your monitor screen
-        function renderLoop() {
-            requestAnimationFrame(renderLoop);
-            
-            // Draw background video frames directly to viewport pixels
-            if (bgVideo.readyState >= 2) {
-                ctx.drawImage(bgVideo, 0, 0, canvas.width, canvas.height);
-            } else {
-                // Keep solid fallback matrix visible while streaming loading buffers
-                ctx.fillStyle = "#0a192f";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-        }
-
-        function forcePlayVideo() {
-            bgVideo.play().then(() => console.log("Streaming active.")).catch(e => {
-                // If it fails, force reload the source elements stream track variables
-                bgVideo.load();
-                bgVideo.play();
-            });
-        }
-
-        window.addEventListener('click', forcePlayVideo);
-        window.addEventListener('touchstart', forcePlayVideo);
-
-        window.addEventListener('DOMContentLoaded', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            initCamera();
-            renderLoop();
-            forcePlayVideo();
-        });
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
+        window.addEventListener('DOMContentLoaded', initCamera);
     </script>
 </body>
 </html>
