@@ -13,11 +13,12 @@
         #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
         #disclaimer { font-size: 0.8rem; color: #888; margin-top: 30px; max-width: 320px; line-height: 1.5; }
         
-        /* The Moving Video Background (Stretched across the entire screen layout) */
-        #bg-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        /* Direct screen layout drawing board canvas */
+        #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
         
-        /* Your Live Camera Feed Bubble Overlay */
+        /* Live Camera Overlay Frame Bubble */
         #webcam { position: absolute; top: 20px; right: 20px; width: 140px; height: 185px; object-fit: cover; border-radius: 16px; border: 3px solid #00ffcc; transform: scaleX(-1); z-index: 5; box-shadow: 0 8px 25px rgba(0,0,0,0.6); background: #121212; }
+        video { display: none; }
     </style>
 </head>
 <body>
@@ -28,53 +29,72 @@
         <div id="disclaimer">⚠️ For complete offline background features, open this page directly in Safari or Chrome instead of staying inside the temporary QR scanner window.</div>
     </div>
 
-    <!-- Active interactive layout maps -->
+    <!-- Core Asset Elements -->
     <video id="webcam" autoplay playsinline muted></video>
-    <video id="bg-video" src="./background.mp4" autoplay loop muted playsinline crossorigin="anonymous"></video>
+    <video id="bg-video" src="./background.mp4" autoplay loop muted playsinline preload="auto" type="video/mp4" crossorigin="anonymous"></video>
+    <canvas id="ar-canvas"></canvas>
 
     <script>
-        // --- 1. Service Worker Caching Registration Engine ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(err => console.log("SW bypass:", err));
         }
 
-        // SPEED BYPASS: Instantly drops the loading layer after 1 second
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) loadingScreen.style.display = 'none';
-        }, 1000);
+        }, 1200);
 
-        // --- 2. Pure Browser Video & Camera Management Engine ---
         const video = document.getElementById('webcam');
         const bgVideo = document.getElementById('bg-video');
+        const canvas = document.getElementById('ar-canvas');
+        const ctx = canvas.getContext('2d');
 
         async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user' }, 
-                    audio: false 
-                });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                video.style.display = "block"; // Turn on overlay bubble
                 video.srcObject = stream;
             } catch (err) {
-                console.log("Webcam access restricted or missing. Running background only mode.");
-                video.style.display = 'none';
+                console.log("Webcam bypassed.");
             }
         }
 
-        // Trigger autoplay permissions for video files on initial user interaction gestures
-        function unlockAutoplay() {
-            if (bgVideo) {
-                bgVideo.play().catch(e => console.log("Autoplay context waiting..."));
+        // Direct-draw paint engine loop that forces frames onto your monitor screen
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
+            
+            // Draw background video frames directly to viewport pixels
+            if (bgVideo.readyState >= 2) {
+                ctx.drawImage(bgVideo, 0, 0, canvas.width, canvas.height);
+            } else {
+                // Keep solid fallback matrix visible while streaming loading buffers
+                ctx.fillStyle = "#0a192f";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
         }
 
-        window.addEventListener('click', unlockAutoplay);
-        window.addEventListener('touchstart', unlockAutoplay);
+        function forcePlayVideo() {
+            bgVideo.play().then(() => console.log("Streaming active.")).catch(e => {
+                // If it fails, force reload the source elements stream track variables
+                bgVideo.load();
+                bgVideo.play();
+            });
+        }
 
-        // Run setup instantly on window launch
+        window.addEventListener('click', forcePlayVideo);
+        window.addEventListener('touchstart', forcePlayVideo);
+
         window.addEventListener('DOMContentLoaded', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
             initCamera();
-            unlockAutoplay();
+            renderLoop();
+            forcePlayVideo();
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         });
     </script>
 </body>
