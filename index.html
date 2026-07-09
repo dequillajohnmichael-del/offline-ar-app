@@ -6,28 +6,13 @@
     <title>Messenger 360° AR Call</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; color: white; user-select: none; }
-        #loading-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18,18,18,0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; text-align: center; padding: 20px; box-sizing: border-box; }
-        .spinner { border: 4px solid rgba(255,255,255,0.1); width: 50px; height: 50px; border-radius: 50%; border-left-color: #00ffcc; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
-        
-        /* The Visual Full-Screen Drawing Board for 360 Blending */
         #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
-        
-        /* Simulated Friend Bubble Overlay (Top Corner) */
         #friend-bubble { position: absolute; top: 30px; right: 20px; width: 110px; height: 165px; border-radius: 16px; border: 2px solid rgba(255,255,255,0.4); z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.5); object-fit: cover; background: #1a1a1a; }
-        
         video { display: none; }
     </style>
-    <!-- Core WebGL 3D Rendering Framework -->
     <script src="https://cloudflare.com"></script>
 </head>
 <body>
-
-    <div id="loading-screen">
-        <div class="spinner"></div>
-        <div id="status">Slicing camera background...<br>Please wait.</div>
-    </div>
 
     <!-- Active Media Element Streams -->
     <video id="webcam" autoplay playsinline muted></video>
@@ -38,12 +23,6 @@
     <video id="friend-bubble" autoplay loop muted playsinline src="https://mixkit.co" crossorigin="anonymous"></video>
 
     <script>
-        // Disabling Service Worker temporarily during testing to prevent future cache blocks
-        setTimeout(() => {
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) loadingScreen.style.display = 'none';
-        }, 1500);
-
         const video = document.getElementById('webcam');
         const bgVideo = document.getElementById('bg-video');
         const friendVideo = document.getElementById('friend-bubble');
@@ -56,7 +35,6 @@
         let currentRotationX = 0, currentRotationY = 0;
         let targetRotationX = 0, targetRotationY = 0;
 
-        // Hidden background canvas layer used to isolate and process your silhouette
         const processingCanvas = document.createElement('canvas');
         const pCtx = processingCanvas.getContext('2d');
 
@@ -76,7 +54,6 @@
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
 
-            // Wrap your background video perfectly inside a giant inverted 360 sphere
             const geometry = new THREE.SphereGeometry(500, 60, 40);
             geometry.scale(-1, 1, 1); 
 
@@ -88,11 +65,9 @@
             camera.position.set(0, 0, 0.1);
         }
 
-        // --- NATIVE REAL-TIME AR BLENDING RENDERING LOOP ---
         function renderARFrame() {
             requestAnimationFrame(renderARFrame);
 
-            // 1. Update 360 rotation values smoothly based on dragging/swiping gestures
             currentRotationX += (targetRotationX - currentRotationX) * 0.15;
             currentRotationY += (targetRotationY - currentRotationY) * 0.15;
             if (sphere) {
@@ -102,16 +77,13 @@
 
             if (renderer) renderer.render(scene, camera);
 
-            // 2. Clear display and paint the moving 360° background video environment first
             displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
             displayCtx.drawImage(renderer.domElement, 0, 0, displayCanvas.width, displayCanvas.height);
 
-            // 3. Extract camera frames, isolate your silhouette, and overlay you full-screen
             if (video.readyState >= 2) {
                 processingCanvas.width = video.videoWidth;
                 processingCanvas.height = video.videoHeight;
                 
-                // Draw mirrored camera feed onto background processing buffer
                 pCtx.save();
                 pCtx.translate(processingCanvas.width, 0);
                 pCtx.scale(-1, 1);
@@ -121,26 +93,20 @@
                 const frameData = pCtx.getImageData(0, 0, processingCanvas.width, processingCanvas.height);
                 const l = frameData.data.length;
 
-                // HIGH-SPEED SILHOUETTE SEGMENTATION FILTER:
-                // Loops through pixels and filters out room colors/shadows behind you to cut you out natively
                 for (let i = 0; i < l; i += 4) {
                     let r = frameData.data[i];
                     let g = frameData.data[i + 1];
                     let b = frameData.data[i + 2];
                     
-                    // Automatically removes shadows, dark wall colors, or green screen elements to mask you out
                     if ((r < 75 && g < 75 && b < 75) || (g > 95 && g > r * 1.15 && g > b * 1.15)) {
-                        frameData.data[i + 3] = 0; // Set background pixel to completely transparent
+                        frameData.data[i + 3] = 0; 
                     }
                 }
                 pCtx.putImageData(frameData, 0, 0);
-
-                // Blend your isolated silhouette directly into the full-screen center of the 360 virtual space
                 displayCtx.drawImage(processingCanvas, 0, 0, displayCanvas.width, displayCanvas.height);
             }
         }
 
-        // Drag & Swipe 360° interaction controllers
         function setupInteractions() {
             const onDragStart = (x, y) => { isDragging = true; previousMousePosition = { x, y }; };
             const onDragMove = (x, y) => {
