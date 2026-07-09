@@ -36,7 +36,7 @@
     <video id="bg-video" src="./background.mp4.mp4" autoplay loop muted playsinline crossorigin="anonymous" preload="auto"></video>
     <canvas id="ar-canvas"></canvas>
 
-    <!-- Simulated secondary caller window overlay. Feel free to swap this source link with any funny video later! -->
+    <!-- Simulated secondary caller window overlay -->
     <video id="friend-bubble" autoplay loop muted playsinline src="https://mixkit.co" crossorigin="anonymous"></video>
 
     <script>
@@ -61,10 +61,14 @@
 
         async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }, 
+                    audio: false 
+                });
                 video.srcObject = stream;
+                return new Promise((resolve) => video.onloadedmetadata = () => resolve(video));
             } catch (err) {
-                console.log("Webcam permission denied.");
+                console.log("Webcam permission denied or delayed.");
             }
         }
 
@@ -77,7 +81,7 @@
             if (bgVideo.readyState >= 2) {
                 ctx.drawImage(bgVideo, 0, 0, canvas.width, canvas.height);
             } else {
-                ctx.fillStyle = "#0a192f";
+                ctx.fillStyle = "#000000";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
@@ -86,8 +90,8 @@
                 ctx.translate(canvas.width, 0);
                 ctx.scale(-1, 1); // Natural mirror transformation
                 
-                // Opacity blend mapping to make you feel natively part of the video world environment
-                ctx.globalAlpha = 0.85; 
+                // UPDATED: Changed from 0.85 to 1.0 for solid, non-transparent video visibility
+                ctx.globalAlpha = 1.0; 
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             }
             ctx.restore();
@@ -96,6 +100,7 @@
         function unlockMediaStreams() {
             bgVideo.play().catch(()=>{});
             if(friendVideo) friendVideo.play().catch(()=>{});
+            initCamera(); // Force check camera stream trigger on screen tap context
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) loadingScreen.style.display = 'none';
         }
