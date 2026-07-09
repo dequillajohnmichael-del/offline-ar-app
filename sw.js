@@ -1,8 +1,10 @@
-const CACHE_NAME = 'offline-ar-clean-v8';
+const CACHE_NAME = 'offline-messenger-v10';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './background.mp4.mp4',
+  'https://cloudflare.com'
 ];
 
 self.addEventListener('install', (event) => {
@@ -18,17 +20,5 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Catch-all system: Dynamically save any image file format variant names matching your repository assets list
-  if (event.request.url.includes('background')) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) => {
-        return fetch(event.request).then((response) => {
-          cache.put(event.request, response.clone());
-          return response;
-        }).catch(() => caches.match(event.request));
-      })
-    );
-    return;
-  }
   event.respondWith(caches.match(event.request).then((res) => res || fetch(event.request)));
 });
