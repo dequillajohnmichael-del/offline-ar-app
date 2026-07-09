@@ -12,8 +12,8 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
         
-        /* YOUR LIVE SELFIE CAMERA FEED (Formatted precisely like the Messenger main frame caller window) */
-        #webcam { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%) scaleX(-1); width: 90%; max-width: 340px; height: 450px; object-fit: cover; border-radius: 24px; border: 3px solid #00ffcc; z-index: 10; box-shadow: 0 12px 35px rgba(0,0,0,0.7); background: #121212; display: none; }
+        /* YOUR LIVE SELFIE CAMERA FEED (Messenger Main Caller Bubble Layout) */
+        #webcam { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%) scaleX(-1); width: 90%; max-width: 320px; height: 420px; object-fit: cover; border-radius: 24px; border: 3px solid #00ffcc; z-index: 10; box-shadow: 0 12px 35px rgba(0,0,0,0.7); background: #121212; display: none; }
         
         /* Floating Participant Video Call Bubble Overlay (Top Corner Like Messenger) */
         #friend-bubble { position: absolute; top: 30px; right: 20px; width: 110px; height: 165px; border-radius: 16px; border: 2px solid rgba(255,255,255,0.4); z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.5); object-fit: cover; background: #1a1a1a; }
@@ -102,17 +102,20 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            if (isDragging) {
-                currentRotationX += (targetRotationX - currentRotationX) * 0.15;
-                currentRotationY += (targetRotationY - currentRotationY) * 0.15;
+            // Calculate rotation adjustments outside of the event handler smoothly
+            currentRotationX += (targetRotationX - currentRotationX) * 0.15;
+            currentRotationY += (targetRotationY - currentRotationY) * 0.15;
+            if(sphere) {
                 sphere.rotation.y = currentRotationX;
                 sphere.rotation.x = currentRotationY;
             }
 
-            renderer.render(scene, camera);
+            if(renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
         }
 
-        // --- Look-Around Drag & Swipe Interaction Controller Map ---
+        // --- FIXED: Look-Around Drag & Swipe Interaction Controller Map ---
         function setupInteractionHandlers() {
             const onDragStart = (x, y) => { isDragging = true; previousMousePosition = { x, y }; };
             const onDragMove = (x, y) => {
@@ -131,9 +134,13 @@
             window.addEventListener('mousemove', (e) => onDragMove(e.clientX, e.clientY));
             window.addEventListener('mouseup', onDragEnd);
 
-            // Smartphone Touch/Swipe Triggers
-            window.addEventListener('touchstart', (e) => { if(e.touches.length > 0) onDragStart(e.touches[0].clientX, e.touches[0].clientY); });
-            window.addEventListener('touchmove', (e) => { if(e.touches.length > 0) onDragMove(e.touches[0].clientX, e.touches[0].clientY); });
+            // FIXED: Smartphone Touch/Swipe Array Coordinate Nodes Mapping
+            window.addEventListener('touchstart', (e) => { 
+                if(e.touches && e.touches.length > 0) onDragStart(e.touches[0].clientX, e.touches[0].clientY); 
+            });
+            window.addEventListener('touchmove', (e) => { 
+                if(e.touches && e.touches.length > 0) onDragMove(e.touches[0].clientX, e.touches[0].clientY); 
+            });
             window.addEventListener('touchend', onDragEnd);
         }
 
