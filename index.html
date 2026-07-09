@@ -6,8 +6,13 @@
     <title>Messenger 360° AR Call</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; color: white; user-select: none; }
+        
+        /* The Master Canvas Layer holding the background blending space */
         #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        
+        /* Simulated Friend Bubble Overlay (Top Corner) */
         #friend-bubble { position: absolute; top: 30px; right: 20px; width: 110px; height: 165px; border-radius: 16px; border: 2px solid rgba(255,255,255,0.4); z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.5); object-fit: cover; background: #1a1a1a; }
+        
         video { display: none; }
     </style>
     <script src="https://cloudflare.com"></script>
@@ -17,6 +22,8 @@
     <!-- Active Media Element Streams -->
     <video id="webcam" autoplay playsinline muted></video>
     <video id="bg-video" src="./background.mp4.mp4" autoplay loop muted playsinline crossorigin="anonymous" preload="auto"></video>
+    
+    <!-- Main Display Viewport -->
     <canvas id="ar-canvas"></canvas>
 
     <!-- Companion Caller Box Overlay -->
