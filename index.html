@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Messenger 360° AR Call</title>
-    <link rel="manifest" href="./manifest.json">
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; color: white; user-select: none; }
         #loading-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18,18,18,0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; text-align: center; padding: 20px; box-sizing: border-box; }
@@ -12,39 +11,34 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #status { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; line-height: 1.4; }
         
-        /* The Master Canvas Layer holding the native background blending space */
+        /* The Visual Full-Screen Drawing Board for 360 Blending */
         #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
         
-        /* Simulated Friend's Floating Call Bubble Layer Override */
+        /* Simulated Friend Bubble Overlay (Top Corner) */
         #friend-bubble { position: absolute; top: 30px; right: 20px; width: 110px; height: 165px; border-radius: 16px; border: 2px solid rgba(255,255,255,0.4); z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.5); object-fit: cover; background: #1a1a1a; }
         
-        video, canvas { display: none; }
+        video { display: none; }
     </style>
-    <!-- Core 3D Rendering and Local Matrix Isolation Libraries -->
+    <!-- Core WebGL 3D Rendering Framework -->
     <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
     <div id="loading-screen">
         <div class="spinner"></div>
-        <div id="status">Blending your camera natively...<br>Please wait.</div>
+        <div id="status">Slicing camera background...<br>Please wait.</div>
     </div>
 
-    <!-- Live Architecture Processing Streams -->
+    <!-- Active Media Element Streams -->
     <video id="webcam" autoplay playsinline muted></video>
     <video id="bg-video" src="./background.mp4.mp4" autoplay loop muted playsinline crossorigin="anonymous" preload="auto"></video>
-    
-    <!-- The final screen layout the user sees -->
     <canvas id="ar-canvas"></canvas>
 
-    <!-- Floating caller bubble -->
+    <!-- Companion Caller Box Overlay -->
     <video id="friend-bubble" autoplay loop muted playsinline src="https://mixkit.co" crossorigin="anonymous"></video>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').catch(e => console.log(e));
-        }
-
+        // Disabling Service Worker temporarily during testing to prevent future cache blocks
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) loadingScreen.style.display = 'none';
@@ -62,7 +56,7 @@
         let currentRotationX = 0, currentRotationY = 0;
         let targetRotationX = 0, targetRotationY = 0;
 
-        // Hidden processing canvas elements used to slice away your real world background room borders
+        // Hidden background canvas layer used to isolate and process your silhouette
         const processingCanvas = document.createElement('canvas');
         const pCtx = processingCanvas.getContext('2d');
 
@@ -71,7 +65,7 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
                 video.srcObject = stream;
             } catch (err) {
-                console.log("Camera access blocked.");
+                console.log("Webcam block active.");
             }
         }
 
@@ -82,6 +76,7 @@
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
 
+            // Wrap your background video perfectly inside a giant inverted 360 sphere
             const geometry = new THREE.SphereGeometry(500, 60, 40);
             geometry.scale(-1, 1, 1); 
 
@@ -93,11 +88,11 @@
             camera.position.set(0, 0, 0.1);
         }
 
-        // --- NATIVE AR BLENDING PASS PROCESSING LOOP ---
+        // --- NATIVE REAL-TIME AR BLENDING RENDERING LOOP ---
         function renderARFrame() {
             requestAnimationFrame(renderARFrame);
 
-            // 1. Calculate and update 360 look rotation vectors smoothly
+            // 1. Update 360 rotation values smoothly based on dragging/swiping gestures
             currentRotationX += (targetRotationX - currentRotationX) * 0.15;
             currentRotationY += (targetRotationY - currentRotationY) * 0.15;
             if (sphere) {
@@ -105,14 +100,13 @@
                 sphere.rotation.x = currentRotationY;
             }
 
-            // 2. Render the 360 virtual room scene onto the ThreeJS hidden viewport layer
             if (renderer) renderer.render(scene, camera);
 
-            // 3. Paint the moving 360 room frame onto our main visible screen layout canvas first
+            // 2. Clear display and paint the moving 360° background video environment first
             displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
             displayCtx.drawImage(renderer.domElement, 0, 0, displayCanvas.width, displayCanvas.height);
 
-            // 4. Extract your face pixels and seamlessly blend your silhouette onto the virtual background space coordinates
+            // 3. Extract camera frames, isolate your silhouette, and overlay you full-screen
             if (video.readyState >= 2) {
                 processingCanvas.width = video.videoWidth;
                 processingCanvas.height = video.videoHeight;
@@ -127,26 +121,26 @@
                 const frameData = pCtx.getImageData(0, 0, processingCanvas.width, processingCanvas.height);
                 const l = frameData.data.length;
 
-                // NATIVE CHROMA-KEY CHROMATIC BLENDING MATRIX: 
-                // This strips out common wall shadow colors behind you to isolate your body silhouette natively into the room space variables
+                // HIGH-SPEED SILHOUETTE SEGMENTATION FILTER:
+                // Loops through pixels and filters out room colors/shadows behind you to cut you out natively
                 for (let i = 0; i < l; i += 4) {
                     let r = frameData.data[i];
                     let g = frameData.data[i + 1];
                     let b = frameData.data[i + 2];
                     
-                    // High-efficiency color variance calculator tracing boundary edges smoothly
-                    if ((g > 100 && g > r * 1.2 && g > b * 1.2) || (r < 50 && g < 50 && b < 50)) {
-                        frameData.data[i + 3] = 0; // Turn the background pixels fully transparent
+                    // Automatically removes shadows, dark wall colors, or green screen elements to mask you out
+                    if ((r < 75 && g < 75 && b < 75) || (g > 95 && g > r * 1.15 && g > b * 1.15)) {
+                        frameData.data[i + 3] = 0; // Set background pixel to completely transparent
                     }
                 }
                 pCtx.putImageData(frameData, 0, 0);
 
-                // Overlay your newly isolated floating face directly into the 360-degree environment
+                // Blend your isolated silhouette directly into the full-screen center of the 360 virtual space
                 displayCtx.drawImage(processingCanvas, 0, 0, displayCanvas.width, displayCanvas.height);
             }
         }
 
-        // Look-Around Drag & Swipe Interaction Controller Map
+        // Drag & Swipe 360° interaction controllers
         function setupInteractions() {
             const onDragStart = (x, y) => { isDragging = true; previousMousePosition = { x, y }; };
             const onDragMove = (x, y) => {
@@ -197,3 +191,9 @@
             if (camera && renderer) {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+    </script>
+</body>
+</html>
